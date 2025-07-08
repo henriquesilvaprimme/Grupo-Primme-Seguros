@@ -84,6 +84,10 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
     }
   };
 
+  // Chama handleRefresh automaticamente quando o componente é montado (ou a aba é acessada)
+  useEffect(() => {
+    handleRefresh();
+  }, []); // O array vazio de dependências garante que isso só rode uma vez na montagem
 
   const fechadosOrdenados = [...fechados].sort((a, b) => {
     const dataA = new Date(a.Data);
