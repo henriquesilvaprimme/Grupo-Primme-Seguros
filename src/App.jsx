@@ -11,11 +11,23 @@ import CriarUsuario from './pages/CriarUsuario';
 import Usuarios from './pages/Usuarios';
 import Ranking from './pages/Ranking';
 
-//const GOOGLE_SHEETS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwgeZteouyVWzrCvgHHQttx-5Bekgs_k-5EguO9Sn2p-XFrivFg9S7_gGKLdoDfCa08/exec';
+// --- CONFIGURAÇÃO DE URL DO GOOGLE APPS SCRIPT ---
+// **ATENÇÃO:** SUBSTITUA ESTE VALOR PELO URL EXATO E MAIS RECENTE DA SUA IMPLANTAÇÃO DE WEB APP DO GOOGLE APPS SCRIPT.
+// Ele deve terminar com '/exec'.
+const GOOGLE_SHEETS_BASE_URL = 'https://script.google.com/macros/s/AKfycby8vujvd5ybEpkaZ0kwZecAWOdaL0XJR84oKJBAIR9dVYeTCv7iSdTdHQWBb7YCp349/exec';
 
-const GOOGLE_SHEETS_SCRIPT_URL = 'ttps://script.google.com/macros/s/AKfycby8vujvd5ybEpkaZ0kwZecAWOdaL0XJR84oKJBAIR9dVYeTCv7iSdTdHQWBb7YCp349/exec?v=getLeads?v=getLeads';
-const GOOGLE_SHEETS_USERS = 'ttps://script.google.com/macros/s/AKfycby8vujvd5ybEpkaZ0kwZecAWOdaL0XJR84oKJBAIR9dVYeTCv7iSdTdHQWBb7YCp349/exec?v=getLeads';
-const GOOGLE_SHEETS_LEADS_FECHADOS = 'ttps://script.google.com/macros/s/AKfycby8vujvd5ybEpkaZ0kwZecAWOdaL0XJR84oKJBAIR9dVYeTCv7iSdTdHQWBb7YCp349/exec?v=getLeads?v=pegar_clientes_fechados'
+// Definição das URLs completas para as requisições, baseadas na URL principal
+const GOOGLE_SHEETS_GET_LEADS_URL = `${GOOGLE_SHEETS_BASE_URL}?v=getLeads`;
+const GOOGLE_SHEETS_GET_USERS_URL = `${GOOGLE_SHEETS_BASE_URL}?v=pegar_usuario`;
+const GOOGLE_SHEETS_GET_LEADS_FECHADOS_URL = `${GOOGLE_SHEETS_BASE_URL}?v=pegar_clientes_fechados`;
+const GOOGLE_SHEETS_CREATE_LEAD_URL = `${GOOGLE_SHEETS_BASE_URL}?v=criar_lead`;
+const GOOGLE_SHEETS_SAVE_LEAD_URL = `${GOOGLE_SHEETS_BASE_URL}?v=salvar_lead`;
+const GOOGLE_SHEETS_TRANSFER_LEAD_URL = `${GOOGLE_SHEETS_BASE_URL}?v=transferir_lead`;
+const GOOGLE_SHEETS_ALTERAR_SEGURADORA_URL = `${GOOGLE_SHEETS_BASE_URL}?v=alterar_seguradora`;
+const GOOGLE_SHEETS_CREATE_USER_URL = `${GOOGLE_SHEETS_BASE_URL}?v=criar_usuario`;
+const GOOGLE_SHEETS_ALTERAR_USUARIO_URL = `${GOOGLE_SHEETS_BASE_URL}?v=alterar_usuario`;
+const GOOGLE_SHEETS_RANKING_URL = `${GOOGLE_SHEETS_BASE_URL}?action=ranking_data`; // Este usa 'action' no GAS
+// --- FIM DA CONFIGURAÇÃO DE URL ---
 
 const App = () => {
   const navigate = useNavigate();
