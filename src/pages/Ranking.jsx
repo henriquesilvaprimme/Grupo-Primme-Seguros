@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { RefreshCcw } from 'lucide-react'; // Importado para o ícone de refresh
 
 const Ranking = ({ usuarios }) => {
   // Renomeado para isLoading para consistência com o outro componente
-  const [isLoading, setIsLoading] = useState(true); 
+  const [isLoading, setIsLoading] = useState(true);
   const [dadosLeads, setLeads] = useState([]);
 
-  // Estado para filtro por mês/ano (formato YYYY-mm)
+  // Estado para filtro por mês/ano (formato yyyy-mm)
   const [dataInput, setDataInput] = useState(() => {
     const hoje = new Date();
     const ano = hoje.getFullYear();
@@ -15,17 +16,17 @@ const Ranking = ({ usuarios }) => {
 
   const [filtroData, setFiltroData] = useState(dataInput);
 
-  // Função para converter data no formato dd/mm/aaaa para YYYY-mm-dd
+  // Função para converter data no formato dd/mm/aaaa para yyyy-mm-dd
   const converterDataParaISO = (dataStr) => {
     if (!dataStr) return '';
     if (dataStr.includes('/')) {
       const partes = dataStr.split('/');
       if (partes.length === 3) {
-        // dd/mm/aaaa -> YYYY-mm-dd
+        // dd/mm/aaaa -> yyyy-mm-dd
         return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
       }
     }
-    // Se já estiver em formato ISO ou outro, tentar retornar só o prefixo YYYY-mm
+    // Se já estiver em formato ISO ou outro, tentar retornar só o prefixo yyyy-mm
     return dataStr.slice(0, 7);
   };
 
@@ -51,6 +52,17 @@ const Ranking = ({ usuarios }) => {
     handleRefresh();
   }, []); // O array vazio de dependências garante que isso só rode uma vez na montagem
 
+  // Loader de carregamento de página completa
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-2 border-b-2 border-indigo-500"></div>
+        <p className="ml-4 text-lg text-gray-700">Carregando RANKING...</p>
+      </div>
+    );
+  }
+
+  // Se não estiver carregando e houver erro, exibe a mensagem de erro (mantido do seu código anterior)
   if (!Array.isArray(usuarios) || !Array.isArray(dadosLeads)) {
     return <div style={{ padding: 20 }}>Erro: dados não carregados corretamente.</div>;
   }
@@ -159,56 +171,31 @@ const Ranking = ({ usuarios }) => {
   };
 
   const aplicarFiltroData = () => {
+    // Isso vai recalcular o ranking com base no novo filtro de dataInput
+    // O loader de página completa não se aplica aqui, pois os dados brutos já foram carregados.
     setFiltroData(dataInput);
   };
 
   return (
     <div style={{ padding: 20, position: 'relative' }}>
-      {/* Loader de carregamento */}
-      {isLoading && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              border: '8px solid #f3f3f3',
-              borderTop: '8px solid #3498db',
-              borderRadius: '50%',
-              width: '50px',
-              height: '50px',
-              animation: 'spin 1s linear infinite',
-            }}
-          ></div>
-          <style>
-            {`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}
-          </style>
-        </div>
-      )}
-
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <h1 style={{ margin: 0 }}>Ranking de Usuários</h1>
 
         <button
           title="Clique para atualizar os dados"
           onClick={handleRefresh} // Chamando a nova função handleRefresh
+          // Aqui, o botão também pode mostrar um spinner se quiser, assim como em GerenciarUsuarios
+          // mas para manter 'igual ao anterior sem mudar nada', deixarei apenas o ícone.
         >
-          🔄
+          {/* Implementando o RefreshCcw do lucide-react para consistência */}
+          {isLoading ? ( // Mostra o spinner se estiver carregando
+            <svg className="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <RefreshCcw size={20} />
+          )}
         </button>
       </div>
 
@@ -257,9 +244,7 @@ const Ranking = ({ usuarios }) => {
         />
       </div>
 
-      {isLoading ? ( // Usando isLoading aqui também para exibir a mensagem enquanto carrega
-        <p>Carregando dados do ranking...</p>
-      ) : rankingOrdenado.length === 0 ? (
+      {rankingOrdenado.length === 0 ? (
         <p>Nenhum usuário ativo com leads fechados para o período selecionado.</p>
       ) : (
         <div
