@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { RefreshCcw } from 'lucide-react'; // Importado para o ícone de refresh
 
 const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onUpdateDetalhes, fetchLeadsFechadosFromSheet, isAdmin }) => {
-  const fechados = leads.filter(lead => lead.Status === 'Fechado');
-
-  console.log("usuarioLogado", isAdmin)
+  // O filtro 'fechados' é aplicado sobre a prop 'leads',
+  // que será atualizada por 'fetchLeadsFechadosFromSheet'
+  const [fechadosFiltradosInterno, setFechadosFiltradosInterno] = useState([]);
 
   // Obtém o mês e ano atual no formato 'YYYY-MM'
   const getMesAnoAtual = () => {
@@ -15,9 +16,8 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
 
   const [valores, setValores] = useState(() => {
     const inicial = {};
-    fechados.forEach(lead => {
-
-      inicial[lead.ID] = {
+    leads.filter(lead => lead.Status === 'Fechado').forEach(lead => {
+      inicial [lead.ID] = {
         PremioLiquido: lead.PremioLiquido !== undefined ? Math.round(parseFloat(lead.PremioLiquido) * 100) : 0,
         Comissao: lead.Comissao ? String(lead.Comissao) : '',
         Parcelamento: lead.Parcelamento || '',
@@ -27,35 +27,13 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
     return inicial;
   });
 
-  // Novo estado para o loader
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    setValores(prevValores => {
-      const novosValores = { ...prevValores };
-
-      leads
-        .filter(lead => lead.Status === 'Fechado')
-        .forEach(lead => {
-          if (!novosValores[lead.ID]) {
-            novosValores[lead.ID] = {
-              PremioLiquido: lead.PremioLiquido !== undefined ? Math.round(parseFloat(lead.PremioLiquido) * 100) : 0,
-              Comissao: lead.Comissao ? String(lead.Comissao) : '',
-              Parcelamento: lead.Parcelamento || '',
-              insurer: lead.Seguradora || '',
-            };
-          }
-        });
-
-      return novosValores;
-    });
-  }, [leads]);
-
+  const [isLoading, setIsLoading] = useState(false); // Estado para o loader
   const [nomeInput, setNomeInput] = useState('');
   const [dataInput, setDataInput] = useState(getMesAnoAtual());
   const [filtroNome, setFiltroNome] = useState('');
   const [filtroData, setFiltroData] = useState(getMesAnoAtual());
 
+  // Função para normalizar texto para filtros
   const normalizarTexto = (texto) =>
     texto
       .normalize('NFD')
@@ -63,20 +41,22 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
       .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
       .toLowerCase();
 
+  // Função para aplicar o filtro de nome
   const aplicarFiltroNome = () => {
     setFiltroNome(nomeInput.trim());
   };
 
+  // Função para aplicar o filtro de data
   const aplicarFiltroData = () => {
     setFiltroData(dataInput);
-    console.log(dataInput)
   };
 
-  // Função para lidar com o refresh e ativar/desativar o loader
+  // Função para buscar dados e controlar o loader
   const handleRefresh = async () => {
     setIsLoading(true); // Ativa o loader
     try {
-      await fetchLeadsFechadosFromSheet(); // Chama a função para buscar dados
+      // Chama a função passada via props para buscar os dados atualizados
+      await fetchLeadsFechadosFromSheet();
     } catch (error) {
       console.error('Erro ao atualizar leads fechados:', error);
     } finally {
@@ -84,23 +64,55 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
     }
   };
 
-  // Chama handleRefresh automaticamente quando o componente é montado (ou a aba é acessada)
+  // Efeito para chamar handleRefresh na montagem do componente
   useEffect(() => {
     handleRefresh();
-  }, []); // O array vazio de dependências garante que isso só rode uma vez na montagem
+  }, []);
 
-  const fechadosOrdenados = [...fechados].sort((a, b) => {
-    const dataA = new Date(a.Data);
-    const dataB = new Date(b.Data);
-    return dataB - dataA; // mais recente primeiro
-  });
+  // Efeito para re-filtrar e atualizar 'valores' sempre que 'leads' ou 'filtroData' mudar
+  useEffect(() => {
+    const fechadosAtuais = leads.filter(lead => lead.Status === 'Fechado');
 
+    const fechadosOrdenados = [...fechadosAtuais].sort((a, b) => {
+      // Ajuste para garantir que a data esteja no formatoികിത്സ-MM-DD para comparação
+      const getDataParaComparacao = (dataStr) => {
+        if (!dataStr) return '';
+        // Se a data já estiver em ചികിത്സ-MM-DD, usa diretamente. Caso contrário, tenta converter.
+        // A sua data no Google Sheets parece vir comoികിത്സ-MM-DD
+        return dataStr.includes('/') ? dataStr.split('/').reverse().join('-') : dataStr;
+      };
 
-  const leadsFiltrados = fechadosOrdenados.filter(lead => {
-    const nomeMatch = normalizarTexto(lead.name || '').includes(normalizarTexto(filtroNome || ''));
-    const dataMatch = filtroData ? lead.Data?.startsWith(filtroData) : true;
-    return nomeMatch && dataMatch;
-  });
+      const dataA = new Date(getDataParaComparacao(a.Data));
+      const dataB = new Date(getDataParaComparacao(b.Data));
+      return dataB.getTime() - dataA.getTime(); // mais recente primeiro
+    });
+
+    const leadsFiltrados = fechadosOrdenados.filter(lead => {
+      const nomeMatch = normalizarTexto(lead.name || '').includes(normalizarTexto(filtroNome || ''));
+      // Ajusta para comparar ചികിത്സ-MM
+      const dataLeadMesAno = lead.Data ? lead.Data.substring(0, 7) : '';
+      const dataMatch = filtroData ? dataLeadMesAno === filtroData : true;
+      return nomeMatch && dataMatch;
+    });
+
+    setFechadosFiltradosInterno(leadsFiltrados);
+
+    // Atualiza os valores do formulário para novos leads carregados
+    setValores(prevValores => {
+      const novosValores = { ...prevValores };
+      fechadosAtuais.forEach(lead => {
+        if (!novosValores [lead.ID]) {
+          novosValores [lead.ID] = {
+            PremioLiquido: lead.PremioLiquido !== undefined ? Math.round(parseFloat(lead.PremioLiquido) * 100) : 0,
+            Comissao: lead.Comissao ? String(lead.Comissao) : '',
+            Parcelamento: lead.Parcelamento || '',
+            insurer: lead.Seguradora || '',
+          };
+        }
+      });
+      return novosValores;
+    });
+  }, [leads, filtroNome, filtroData]); // Dependências para re-executar este efeito
 
   const formatarMoeda = (valorCentavos) => {
     if (isNaN(valorCentavos) || valorCentavos === null) return '';
@@ -113,8 +125,8 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
     if (somenteNumeros === '') {
       setValores(prev => ({
         ...prev,
-        [id]: {
-          ...prev[id],
+        [`${id}`]: {
+          ...prev[`${id}`],
           PremioLiquido: 0,
         },
       }));
@@ -126,15 +138,15 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
 
     setValores(prev => ({
       ...prev,
-      [id]: {
-        ...prev[id],
+      [`${id}`]: {
+        ...prev[`${id}`],
         PremioLiquido: valorCentavos,
       },
     }));
   };
 
   const handlePremioLiquidoBlur = (id) => {
-    const valorCentavos = valores[id]?.PremioLiquido || 0;
+    const valorCentavos = valores[`${id}`]?.PremioLiquido || 0;
     const valorReais = valorCentavos / 100;
 
     if (!isNaN(valorReais)) {
@@ -152,8 +164,8 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
 
       setValores(prev => ({
         ...prev,
-        [id]: {
-          ...prev[id],
+        [`${id}`]: {
+          ...prev[`${id}`],
           Comissao: valorLimitado,
         },
       }));
@@ -166,8 +178,8 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
   const handleParcelamentoChange = (id, valor) => {
     setValores(prev => ({
       ...prev,
-      [id]: {
-        ...prev[id],
+      [`${id}`]: {
+        ...prev[`${id}`],
         Parcelamento: valor,
       },
     }));
@@ -204,40 +216,11 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
 
   return (
     <div style={{ padding: '20px', position: 'relative' }}>
-      {/* Loader de carregamento */}
+      {/* Loader de carregamento (overlay da página interna com fundo branco) */}
       {isLoading && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(255, 255, 255, 0.8)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 9999,
-          }}
-        >
-          <div
-            style={{
-              border: '8px solid #f3f3f3',
-              borderTop: '8px solid #3498db',
-              borderRadius: '50%',
-              width: '50px',
-              height: '50px',
-              animation: 'spin 1s linear infinite',
-            }}
-          ></div>
-          <style>
-            {`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}
-          </style>
+        <div className="absolute inset-0 bg-white flex justify-center items-center z-10">
+          <div className="animate-spin rounded-full h-20 w-20 border-t-2 border-b-2 border-indigo-500"></div>
+          <p className="ml-4 text-lg text-gray-700">Carregando LEADS FECHADOS...</p>
         </div>
       )}
 
@@ -245,9 +228,17 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
         <h1 style={{ margin: 0 }}>Leads Fechados</h1>
 
         <button title='Clique para atualizar os dados'
-          onClick={handleRefresh} // Chamando a nova função handleRefresh
+          onClick={handleRefresh}
+          disabled={isLoading}
         >
-          🔄
+          {isLoading ? (
+            <svg className="animate-spin h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <RefreshCcw size={20} />
+          )}
         </button>
       </div>
 
@@ -347,10 +338,10 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
         </div>
       </div>
 
-      {leadsFiltrados.length === 0 ? (
+      {fechadosFiltradosInterno.length === 0 ? (
         <p>Não há leads fechados que correspondam ao filtro aplicado.</p>
       ) : (
-        leadsFiltrados.map((lead) => {
+        fechadosFiltradosInterno.map((lead) => {
           const containerStyle = {
             display: 'flex',
             alignItems: 'center',
@@ -365,13 +356,13 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
           const responsavel = usuarios.find((u) => u.nome === lead.Responsavel && isAdmin);
 
           const isButtonDisabled =
-            !valores[lead.ID]?.insurer ||
-            !valores[lead.ID]?.PremioLiquido ||
-            valores[lead.ID]?.PremioLiquido === 0 ||
-            !valores[lead.ID]?.Comissao ||
-            valores[lead.ID]?.Comissao === '' ||
-            !valores[lead.ID]?.Parcelamento ||
-            valores[lead.ID]?.Parcelamento === '';
+            !valores[`${lead.ID}`]?.insurer ||
+            !valores[`${lead.ID}`]?.PremioLiquido ||
+            valores[`${lead.ID}`]?.PremioLiquido === 0 ||
+            !valores[`${lead.ID}`]?.Comissao ||
+            valores[`${lead.ID}`]?.Comissao === '' ||
+            !valores[`${lead.ID}`]?.Parcelamento ||
+            valores[`${lead.ID}`]?.Parcelamento === '';
 
           return (
             <div key={lead.ID} style={containerStyle}>
@@ -392,13 +383,13 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: '250px' }}>
                 <select
-                  value={valores[lead.ID]?.insurer || ''}
+                  value={valores[`${lead.ID}`]?.insurer || ''}
                   onChange={(e) => {
                     const valor = e.target.value;
                     setValores(prev => ({
                       ...prev,
-                      [lead.ID]: {
-                        ...prev[lead.ID],
+                      [`${lead.ID}`]: {
+                        ...prev[`${lead.ID}`],
                         insurer: valor
                       }
                     }));
@@ -425,7 +416,7 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
                   <input
                     type="text"
                     placeholder="Prêmio Líquido"
-                    value={formatarMoeda(valores[lead.ID]?.PremioLiquido)}
+                    value={formatarMoeda(valores[`${lead.ID}`]?.PremioLiquido)}
                     onChange={(e) => handlePremioLiquidoChange(lead.ID, e.target.value)}
                     onBlur={() => handlePremioLiquidoBlur(lead.ID)}
                     disabled={!!lead.Seguradora}
@@ -438,7 +429,7 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
                   <input
                     type="text"
                     placeholder="Comissão (%)"
-                    value={valores[lead.ID]?.Comissao || ''}
+                    value={valores[`${lead.ID}`]?.Comissao || ''}
                     onChange={(e) => handleComissaoChange(lead.ID, e.target.value)}
                     disabled={lead.Seguradora}
                     maxLength={4}
@@ -447,7 +438,7 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
                 </div>
 
                 <select
-                  value={valores[lead.ID]?.Parcelamento || ''}
+                  value={valores[`${lead.ID}`]?.Parcelamento || ''}
                   onChange={(e) => handleParcelamentoChange(lead.ID, e.target.value)}
                   disabled={lead.Seguradora}
                   style={{
@@ -467,10 +458,10 @@ const LeadsFechados = ({ leads, usuarios, onUpdateInsurer, onConfirmInsurer, onU
                 {!lead.Seguradora ? (
                   <button
                     onClick={() => onConfirmInsurer(lead.ID,
-                      parseFloat(valores[lead.ID]?.PremioLiquido.toString().replace('.', ',')),
-                      valores[lead.ID]?.insurer,
-                      valores[lead.ID]?.Comissao,
-                      valores[lead.ID]?.Parcelamento
+                      parseFloat(valores[`${lead.ID}`]?.PremioLiquido.toString().replace('.', ',')),
+                      valores[`${lead.ID}`]?.insurer,
+                      valores[`${lead.ID}`]?.Comissao,
+                      valores[`${lead.ID}`]?.Parcelamento
                     )}
                     disabled={isButtonDisabled}
                     style={{
