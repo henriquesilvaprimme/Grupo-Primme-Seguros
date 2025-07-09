@@ -2,49 +2,64 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const Dashboard = ({ leads }) => {
-  const [leadsClosed, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Estado para armazenar os leads da aba "Leads Fechados" já filtrados pelo GAS
+  const [leadsFechadosComSeguradora, setLeadsFechadosComSeguradora] = useState([]);
+  const [loadingFechados, setLoadingFechados] = useState(true);
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim] = useState('');
 
-  const buscarLeads = async () => {
+  // Função para buscar APENAS os leads da aba 'Leads Fechados'
+  // Agora, esperamos que o GAS já tenha feito a maior parte do filtro.
+  const buscarLeadsFechadosDoSheets = async () => {
     try {
       const response = await axios.get(
         'https://script.google.com/macros/s/AKfycbzJ_WHn3ssPL8VYbVbVOUa1Zw0xVFLolCnL-rOQ63cHO2st7KHqzZ9CHUwZhiCqVgBu/exec?v=pegar_clientes_fechados'
       );
-      setLeads(response.data);
+
+      // Opcional: Adicionar um filtro no frontend como "segurança extra"
+      // Se o GAS estiver fazendo o trabalho perfeito, este filtro pode ser mais simples ou removido.
+      // Mantive a versão robusta para caso haja inconsistências nos dados.
+      const filteredLeads = response.data.filter(
+        (lead) => lead.Status === 'Fechado' && lead.Seguradora && String(lead.Seguradora).trim() !== ''
+      );
+
+      setLeadsFechadosComSeguradora(filteredLeads);
     } catch (error) {
-      console.error('Erro ao buscar leads:', error);
+      console.error('Erro ao buscar leads fechados específicos:', error);
     } finally {
-      setLoading(false);
+      setLoadingFechados(false);
     }
   };
 
   useEffect(() => {
-    buscarLeads();
+    buscarLeadsFechadosDoSheets();
   }, []);
 
-  // Contadores existentes
+  // --- CONTADORES ---
+  // Estes contadores continuam usando a prop 'leads' (da aba geral 'Leads')
   const totalLeads = leads.length;
-  const leadsFechados = leads.filter((lead) => lead.status === 'Fechado').length;
   const leadsPerdidos = leads.filter((lead) => lead.status === 'Perdido').length;
   const leadsEmContato = leads.filter((lead) => lead.status === 'Em Contato').length;
   const leadsSemContato = leads.filter((lead) => lead.status === 'Sem Contato').length;
 
-  // Contadores por seguradora baseados em leadsClosed
-  const portoSeguro = leadsClosed.filter((lead) => lead.Seguradora === 'Porto Seguro').length;
-  const azulSeguros = leadsClosed.filter((lead) => lead.Seguradora === 'Azul Seguros').length;
-  const itauSeguros = leadsClosed.filter((lead) => lead.Seguradora === 'Itau Seguros').length;
-  const demais = leadsClosed.filter((lead) => lead.Seguradora === 'Demais Seguradoras').length;
+  // ESTE É O CONTADOR QUE VOCÊ QUERIA FOCAR:
+  // Usa o estado 'leadsFechadosComSeguradora' que vem da aba 'Leads Fechados'
+  const leadsFechados = leadsFechadosComSeguradora.length;
 
-  // Calcular total de prêmio líquido global
-  const totalPremioLiquido = leadsClosed.reduce(
+  // Contadores por seguradora baseados em 'leadsFechadosComSeguradora' (correto)
+  const portoSeguro = leadsFechadosComSeguradora.filter((lead) => lead.Seguradora === 'Porto Seguro').length;
+  const azulSeguros = leadsFechadosComSeguradora.filter((lead) => lead.Seguradora === 'Azul Seguros').length;
+  const itauSeguros = leadsFechadosComSeguradora.filter((lead) => lead.Seguradora === 'Itau Seguros').length;
+  const demais = leadsFechadosComSeguradora.filter((lead) => lead.Seguradora === 'Demais Seguradoras').length;
+
+  // Calcular total de prêmio líquido global (também baseado em 'leadsFechadosComSeguradora')
+  const totalPremioLiquido = leadsFechadosComSeguradora.reduce(
     (acc, curr) => acc + (Number(curr.PremioLiquido) || 0),
     0
   );
 
-  // Calcular média ponderada de comissão global
-  const somaPonderadaComissao = leadsClosed.reduce((acc, lead) => {
+  // Calcular média ponderada de comissão global (também baseado em 'leadsFechadosComSeguradora')
+  const somaPonderadaComissao = leadsFechadosComSeguradora.reduce((acc, lead) => {
     const premio = Number(lead.PremioLiquido) || 0;
     const comissao = Number(lead.Comissao) || 0;
     return acc + premio * (comissao / 100);
@@ -61,6 +76,10 @@ const Dashboard = ({ leads }) => {
     color: '#fff',
     textAlign: 'center',
   };
+
+  if (loadingFechados) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Carregando dados de leads fechados...</div>;
+  }
 
   return (
     <div style={{ padding: '20px' }}>
